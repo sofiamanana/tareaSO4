@@ -83,18 +83,30 @@ for i in c:
 logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
 #logging.debug("Comida "+str(i)+" servida!")
 
-semaforo_servir = threading.Semaphore(1)
-semaforo_sacarB = threading.Semaphore(1)
-semaforo_dejarB = threading.Semaphore(1)
 cantidad_clientes = 4
 cantidad_bandejas = 2
 bandejon = 0
 
+semaforo_servir = threading.Semaphore(1)
+semaforo_sacarB = threading.Semaphore(cantidad_bandejas)
+semaforo_dejarB = threading.Semaphore(1)
+semaforo_rellenar = threading.Semaphore(1)
+semaforo_juan = threading.Semaphore(1)
+
+
+def rellenar():
+    global bandejon
+    print("Rellenando...")
+    while bandejon !=0 :
+        semaforo_sacarB.release()
+    time.sleep(3)
+    semaforo_rellenar.release()
+    logging.debug("Bandejas listas")
+    return
+
+
 def sacarB():
     logging.debug("Sacar bandeja")
-    global cantidad_bandejas
-    cantidad_bandejas-=1
-    semaforo_sacarB.release()
     return
 
 
@@ -107,24 +119,33 @@ def dejarB():
 
 def juan(servir):
     global cantidad_bandejas
-    if servir==1:
-        cantidad_bandejas-=1
-        print("sirviendo...")
-        time.sleep(3)
-        semaforo_servir.release()
-        logging.debug("Listo comida")
-    
-    
+
+    print("sirviendo...")
+    time.sleep(3)
+    semaforo_servir.release()
+    logging.debug("Listo comida")
+
+    if servir==2:
+        rellenar()
+
     return
 
 def cliente(i):
+    almuerzo = 0
     print("Hola! Soy el cliente "+str(i))
+
     if i==1:
+        almuerzo = 1
         print("Acompaño al cliente "+str(i+1))
+
     else:
         print("Sacando bandeja...")
-        semaforo_sacarB.acquire()
-        sacarB()
+        if semaforo_sacarB.acquire():
+            sacarB()
+        else: 
+            semaforo_rellenar.acquire()
+            semaforo_juan.release()
+            
         logging.debug("Pedir comida "+str(i))
         
         semaforo_servir.acquire()
@@ -134,8 +155,6 @@ def cliente(i):
         print("Dejando bandeja..."+str(i))
         semaforo_dejarB.acquire()
         dejarB()
-
-
 
     return
 
@@ -155,6 +174,7 @@ def casino():
         t = threading.Thread(target=cliente,name="Cliente-"+str(i+1),args=(i+1, ))
         t_c.append(t)
         t.start()
+        semaforo_juan.acquire()
     
     t_j.join()
     return
