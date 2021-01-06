@@ -84,12 +84,24 @@ logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s
 #logging.debug("Comida "+str(i)+" servida!")
 
 semaforo_servir = threading.Semaphore(1)
+semaforo_sacarB = threading.Semaphore(1)
 semaforo_dejarB = threading.Semaphore(1)
 cantidad_clientes = 4
 cantidad_bandejas = 2
+bandejon = 0
 
-def dejarB(i):
+def sacarB():
+    logging.debug("Sacar bandeja")
+    global cantidad_bandejas
+    cantidad_bandejas-=1
+    semaforo_sacarB.release()
+    return
 
+
+def dejarB():
+    logging.debug("Dejar bandeja")
+    global bandejon
+    bandejon+=1
     semaforo_dejarB.release()
     return
 
@@ -110,6 +122,9 @@ def cliente(i):
     if i==1:
         print("Acompaño al cliente "+str(i+1))
     else:
+        print("Sacando bandeja...")
+        semaforo_sacarB.acquire()
+        sacarB()
         logging.debug("Pedir comida "+str(i))
         
         semaforo_servir.acquire()
