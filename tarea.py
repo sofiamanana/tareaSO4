@@ -1,89 +1,12 @@
 import threading
 import time
 import logging
-from t import Cliente, Casino
 
-'''
-logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
-def juan(n):
-    time.sleep(3)
-    logging.debug("lalalla soy juan")
-    print("Soy juan",n)
-    print(threading.currentThread().getName())
-
-thread_j = threading.Thread(target=juan,name="juan",args=(1, ))
-
-thread_j.start() 
-thread_j.join()
-'''
-'''
-#tarea:
-
-cant_clientes = 4
-cant_bandejas = 8
-bandejero = 0
-semaforo = threading.Semaphore(1)
-
-logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
-
-def cliente(i):
-    print("Soy cliente ",i)
-    global cant_bandejas
-    print("Pidiendo comida...")
-    cant_bandejas -= 1
-    semaforo.acquire()
-    juan(i)
-    semaforo.release()    
-
-    return 
-
-def juan(i):
-    print("sirviendo a cliente ",i,"...\n")
-    time.sleep(3)
-    logging.debug("Comida "+str(i)+" servida!")
-
-    return
-
-def fila_almuerzo():
-    return
-
-#t_juan = threading.Thread(target=juan,name="juan")
-t_cliente = threading.Thread(target=cliente,name="cliente")
-
-#t_juan.start()
-threads = []
-for i in range(1,cant_clientes):
-    t = threading.Thread(target=cliente,args=(i, ))
-    threads.append(t)
-    t.start()
-
-for j in threads:
-    j.join()
-
-print(cant_bandejas)
-
-#t_juan.join()
-
-
-logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
-
-casino = Casino()
-
-c = []
-for i in range(3):
-    c.append(Cliente((i+1),casino))
-
-for i in c:
-    i.start()
-    
-for i in c:
-    i.join()
-'''
 
 logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
 #logging.debug("Comida "+str(i)+" servida!")
 
-cantidad_clientes = 4
+cantidad_clientes = 3
 cantidad_bandejas = 2
 bandejon = 0
 
@@ -93,6 +16,8 @@ semaforo_dejarB = threading.Semaphore(1)
 semaforo_rellenar = threading.Semaphore(1)
 semaforo_juan = threading.Semaphore(1)
 
+
+e_juan = threading.Event()
 
 def rellenar():
     global bandejon
@@ -117,20 +42,48 @@ def dejarB():
     semaforo_dejarB.release()
     return
 
-def juan(servir):
-    global cantidad_bandejas
+def juan(accion):
+    while accion!=1:
+        logging.debug("Comienza hebra")
+        event_is_set = e_juan.wait()
+    
+        logging.debug('event set: %s', event_is_set)
+        
+        logging.debug("Unset event")
+        e_juan.clear()
+        semaforo_juan.release()
 
-    print("sirviendo...")
+
+    '''
+    global cantidad_bandejas
+    logging.debug("Sriviendo...")
+
     time.sleep(3)
     semaforo_servir.release()
     logging.debug("Listo comida")
 
-    if servir==2:
+    if accion==2:
         rellenar()
-
+    '''
     return
 
 def cliente(i):
+
+    if i != 1:
+        
+        logging.debug("Comienza hebra")
+        time.sleep(2)
+        logging.debug("Setting event")
+        semaforo_juan.acquire()
+        e_juan.set()
+        
+        logging.debug("Event set")
+        logging.debug("lalallalalal")
+    if i == 3:
+        juan(1)
+        
+
+    '''
     almuerzo = 0
     print("Hola! Soy el cliente "+str(i))
 
@@ -144,10 +97,10 @@ def cliente(i):
             sacarB()
         else: 
             semaforo_rellenar.acquire()
-            semaforo_juan.release()
+            #semaforo_juan.release()
             
         logging.debug("Pedir comida "+str(i))
-        
+        e_juan.set()
         semaforo_servir.acquire()
         juan(1)
         print("Comiendo..."+str(i))
@@ -155,18 +108,16 @@ def cliente(i):
         print("Dejando bandeja..."+str(i))
         semaforo_dejarB.acquire()
         dejarB()
-
+    '''
     return
 
 def casino():
     print("Casino abierto!")
-
-    t_j = threading.Thread(target=juan,name="juan",args=(0, ))
+    t_j = threading.Thread(target=juan,name="Juan",args=(0, ))
     t_j.start()
     print("Llego juan")
-
+    
     global cantidad_clientes 
-
 
     t_c = []
     for i in range(cantidad_clientes):
@@ -174,7 +125,7 @@ def casino():
         t = threading.Thread(target=cliente,name="Cliente-"+str(i+1),args=(i+1, ))
         t_c.append(t)
         t.start()
-        semaforo_juan.acquire()
+        
     
     t_j.join()
     return

@@ -1,84 +1,97 @@
 import threading
 import time
 import logging
-import datetime
-
-#logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
-
-#Clases:
-
+'''
 logging.basicConfig(level=logging.DEBUG,format='[%(levelname)s] (%(threadName)-s) %(message)s')
+cantidad_clientes = 4
+semaforo_juan = threading.Semaphore(1)
+semaforo_sacarB = threading.Semaphore(1)
+k = 0
+def sacarB():
+    logging.debug("sacando b")
+    semaforo_sacarB.release()
+    return
 
-class Juan:
-    def __init__(self):
-        self.Servir = threading.Semaphore(1)
-        self.Reponer = threading.Semaphore(1)
+def juan(servir):
+    return
 
-    def Servir(self):
-        return
+def cliente(i):
+    print("llego cliente ",i)
+    logging.debug("Saca bandeja")
+    semaforo_sacarB.acquire()
+    sacarB()
+    semaforo_juan.release()
+    global k
+    k = 1
 
-    def Reponer(self):
-        return
+    return
 
-class Casino:
-    def __init__(self): #agregar parametro despues
-        self.bandejas = 3
-        self.bandejero = 0
-        self.c_actual = 0
-        self.cantidad_total = 4
-        self.s_bandejero = threading.Semaphore(self.bandejas/2)
-        self.s_cliente = threading.Semaphore(self.cantidad_total)
+def casino():
+    print("Casino abierto!")
+
+    t_j = threading.Thread(target=juan,name="Juan",args=(0, ))
+    t_j.start()
+    print("Llego juan")
+
+    global cantidad_clientes 
+
+
+    t_c = []
+    for i in range(cantidad_clientes):
         
-
-    def entra_c(self):
-        self.s_cliente.acquire()
-        self.c_actual+=1
-
-    def sale_c(self):
-        self.s_cliente.release()
-        self.c_actual-=1
-
-    def servir_c(self):
-        return
-
-class Cliente(threading.Thread):
-    def __init__(self,i,casino):
-        threading.Thread.__init__(self)
-        self.nombre = "Cliente-"+str(i)
-        self.Comiendo = threading.Semaphore(1)
-        self.Ayudando = False
-        self.casino = casino
-
-    def existir(self):
-        self.casino.entra_c()
-        self.casino.sale_c()
-
-
-
-
-
+        t = threading.Thread(target=cliente,name="Cliente-"+str(i+1),args=(i+1, ))
+        t_c.append(t)
+        t.start()
+        semaforo_juan.acquire()
     
-
-'''
-def cliente():
-    logging.debug("Cliente creado")
+    for t in t_c:
+        t.join()
+    
+    t_j.join()
     return
 
-def juan(c_clientes,c_bandejas):
-    logging.debug("lalala")
-    threads = []
-    for i in range(c_clientes):
-        t_c = threading.Thread(target=cliente,name=str(i))
-        threads.append(t_c)
-        t_c.start()
-    for i in threads:
-        i.join()
-    return
-
-c_clientes = 4
-c_bandejas = 5
-
-t_juan = threading.Thread(target=juan,name="juan",args=(c_clientes,c_bandejas))
-t_juan.start()
-t_juan.join()
+casino()
 '''
+def wait_for_event(e):
+    """Wait for the event to be set before doing anything"""
+    logging.debug('wait_for_event starting')
+    event_is_set = e.wait()
+    logging.debug('event set: %s', event_is_set)
+
+
+def wait_for_event_timeout(e, t):
+    """Wait t seconds and then timeout"""
+    while not e.is_set():
+        logging.debug('wait_for_event_timeout starting')
+        event_is_set = e.wait(t)
+        logging.debug('event set: %s', event_is_set)
+        if event_is_set:
+            logging.debug('processing event')
+        else:
+            logging.debug('doing other work')
+
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='(%(threadName)-10s) %(message)s',
+)
+
+e = threading.Event()
+t1 = threading.Thread(
+    name='block',
+    target=wait_for_event,
+    args=(e,),
+)
+t1.start()
+
+t2 = threading.Thread(
+    name='nonblock',
+    target=wait_for_event_timeout,
+    args=(e, 2),
+)
+t2.start()
+
+logging.debug('Waiting before calling Event.set()')
+time.sleep(3)
+e.set()
+logging.debug('Event is set')
